@@ -1,3 +1,7 @@
 form {
     display: inline;
 }
+
+input {
+    font-size: 16px;
+}

@@ -2,15 +2,15 @@
     <input type="hidden" value="{{restaurant_place_in_list}}">
     <form method="post" action="delete_restaurant">
         <input type="hidden" name="id" value="{{restaurant_id}}">
-        <button type="submit">❌</button>
+        <button title="delete" type="submit">❌</button>
     </form>
     {{restaurant_name}}
     <form method="post" action="increment_position">
         <input type="hidden" name="id" value="{{restaurant_id}}">
-        <button type="submit">🡱</button>
+        <button title="raise position in list" type="submit">++</button>
     </form>
     <form method="post" action="decrement_position">
         <input type="hidden" name="id" value="{{restaurant_id}}">
-        <button type="submit">🡳</button>
+        <button title="lower position in list"  type="submit">--</button>
     </form>
 </li>
