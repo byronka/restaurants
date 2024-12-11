@@ -1,0 +1,21 @@
+# Systemd unit file for restaurant
+# this goes at /etc/systemd/system/restaurant.service
+[Unit]
+Description=restaurant Web Application
+After=syslog.target network.target
+
+[Service]
+Type=forking
+PIDFile=/home/opc/restaurant/pid_restaurant
+Environment=JAVA_HOME=/home/opc/jdk-21.0.5
+Environment=RESTAURANT_HOME=/home/opc/restaurant
+
+ExecStart=/home/opc/restaurant/start.sh
+ExecReload=/home/opc/restaurant/restart.sh
+ExecStop=/home/opc/restaurant/stop.sh
+
+User=opc
+Group=opc
+
+[Install]
+WantedBy=multi-user.target
