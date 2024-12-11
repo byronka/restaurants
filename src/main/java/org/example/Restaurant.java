@@ -11,19 +11,17 @@ public class Restaurant extends DbData<Restaurant> {
 
     private long index;
     private final String name;
-    private final int placeInList;
-    public static final Restaurant EMPTY = new Restaurant(0, "", 0);
+    public static final Restaurant EMPTY = new Restaurant(0, "");
 
-    public Restaurant(long index, String name, int placeInList) {
+    public Restaurant(long index, String name) {
 
         this.index = index;
         this.name = name;
-        this.placeInList = placeInList;
     }
 
     @Override
     protected String serialize() {
-        return serializeHelper(index, name, placeInList);
+        return serializeHelper(index, name);
     }
 
     @Override
@@ -31,8 +29,7 @@ public class Restaurant extends DbData<Restaurant> {
         final var tokens = deserializeHelper(serializedText);
         return new Restaurant(
                 Long.parseLong(tokens.get(0)),
-                tokens.get(1),
-                Integer.parseInt(tokens.get(2))
+                tokens.get(1)
         );
     }
 
@@ -45,10 +42,6 @@ public class Restaurant extends DbData<Restaurant> {
         return name;
     }
 
-    public int getPlaceInList() {
-        return placeInList;
-    }
-
     @Override
     protected void setIndex(long index) {
         this.index = index;
@@ -59,20 +52,13 @@ public class Restaurant extends DbData<Restaurant> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Restaurant that = (Restaurant) o;
-        return index == that.index && placeInList == that.placeInList && Objects.equals(name, that.name);
+        return index == that.index && Objects.equals(name, that.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, name, placeInList);
+        return Objects.hash(index, name);
     }
 
-    @Override
-    public String toString() {
-        return "Restaurant{" +
-                "index=" + index +
-                ", name='" + name + '\'' +
-                ", placeInList=" + placeInList +
-                '}';
-    }
+
 }

@@ -7,11 +7,9 @@ import com.renomad.minum.utils.FileUtils;
 import com.renomad.minum.utils.SearchUtils;
 import com.renomad.minum.web.FullSystem;
 import com.renomad.minum.web.Response;
+import com.renomad.minum.web.StatusLine;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.renomad.minum.web.RequestLine.Method.GET;
@@ -24,26 +22,37 @@ public class Main {
         Context context = fs.getContext();
         org.example.FileUtils fileUtils = new org.example.FileUtils(new FileUtils(context.getLogger(), context.getConstants()), new Constants());
         Db<Restaurant> restaurants = context.getDb("restaurants", Restaurant.EMPTY);
+        Db<RestaurantOrder> restaurantOrder = context.getDb("restaurantOrder", RestaurantOrder.EMPTY);
+        if (restaurantOrder.values().isEmpty()) {
+            restaurantOrder.write(new RestaurantOrder(0, new ArrayDeque<>()));
+        }
         TemplateProcessor indexProcessor = TemplateProcessor.buildProcessor(fileUtils.readTemplate("index.html"));
         TemplateProcessor restaurantEntryProcessor = TemplateProcessor.buildProcessor(fileUtils.readTemplate("restaurant_entry.html"));
 
         fs.getWebFramework().registerPath(GET, "", request -> {
-            String restaurantsString = restaurants.values().stream()
-                    .sorted(Comparator.comparingInt(Restaurant::getPlaceInList).reversed())
-                    .map(x -> {
-                        Map<String,String> myMap = new HashMap<>();
-                        myMap.put("restaurant_name", x.getName());
-                        myMap.put("restaurant_id", String.valueOf(x.getIndex()));
-                        myMap.put("restaurant_place_in_list", String.valueOf(x.getPlaceInList()));
-                        return restaurantEntryProcessor.renderTemplate(myMap);
-                    }).collect(Collectors.joining("\n"));
+            RestaurantOrder currentOrder = restaurantOrder.values().stream().toList().getFirst();
 
-            return Response.htmlOk(indexProcessor.renderTemplate(Map.of("restaurantsList", restaurantsString)));
+            StringBuilder sb = new StringBuilder();
+            for (var id : currentOrder.getOrderedIds().reversed()) {
+                Map<String,String> myMap = new HashMap<>();
+                Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
+                myMap.put("restaurant_name", r.getName());
+                myMap.put("restaurant_id", id.toString());
+                sb.append(restaurantEntryProcessor.renderTemplate(myMap)).append(("\n"));
+            }
+
+            return Response.htmlOk(indexProcessor.renderTemplate(Map.of("restaurantsList", sb.toString())));
         });
 
         fs.getWebFramework().registerPath(POST, "add_restaurant", request -> {
             String restaurantName = request.getBody().asString("restaurant");
-            restaurants.write(new Restaurant(0, restaurantName, 0));
+            if (restaurantName.length() > 50) return Response.buildLeanResponse(StatusLine.StatusCode.CODE_400_BAD_REQUEST);
+            if (restaurants.values().size() > 30) return Response.buildLeanResponse(StatusLine.StatusCode.CODE_400_BAD_REQUEST);
+            Restaurant newRestaurant = restaurants.write(new Restaurant(0, restaurantName));
+            // update order value
+            RestaurantOrder currentOrder = restaurantOrder.values().stream().toList().getFirst();
+            currentOrder.getOrderedIds().add((int)newRestaurant.getIndex());
+            restaurantOrder.write(currentOrder);
             return Response.redirectTo("/");
         });
 
@@ -51,8 +60,28 @@ public class Main {
             String idString = request.getBody().asString("id");
             long id = Long.parseLong(idString);
             Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
-            int newPlaceInList = r.getPlaceInList() + 1;
-            restaurants.write(new Restaurant(r.getIndex(), r.getName(), newPlaceInList));
+            RestaurantOrder currentOrder = restaurantOrder.values().stream().toList().getFirst();
+            Integer[] orderedIds = currentOrder.getOrderedIds().toArray(Integer[]::new);
+            int indexAtRestaurant = -1;
+            ArrayDeque<Integer> adjustedDeque = null;
+            for (int i = 0; i < orderedIds.length; i++) {
+                if (orderedIds[i] == r.getIndex()) {
+                    indexAtRestaurant = i;
+
+                    // if we are below the ceiling, move up
+                    if ((i + 1) < orderedIds.length) {
+                        Integer temp = orderedIds[i];
+                        orderedIds[i] = orderedIds[i + 1];
+                        orderedIds[i + 1] = temp;
+                    }
+                    List<Integer> list = Arrays.asList(orderedIds);
+                    adjustedDeque = new ArrayDeque<>(list);
+                    break;
+                }
+            }
+            if (indexAtRestaurant == -1) return Response.buildLeanResponse(StatusLine.StatusCode.CODE_400_BAD_REQUEST);
+            RestaurantOrder adjustedRestaurantOrder = new RestaurantOrder(currentOrder.getIndex(), adjustedDeque);
+            restaurantOrder.write(adjustedRestaurantOrder);
             return Response.redirectTo("/");
         });
 
@@ -60,8 +89,28 @@ public class Main {
             String idString = request.getBody().asString("id");
             long id = Long.parseLong(idString);
             Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
-            int newPlaceInList = r.getPlaceInList() - 1;
-            restaurants.write(new Restaurant(r.getIndex(), r.getName(), newPlaceInList));
+            RestaurantOrder currentOrder = restaurantOrder.values().stream().toList().getFirst();
+            Integer[] orderedIds = currentOrder.getOrderedIds().toArray(Integer[]::new);
+            int indexAtRestaurant = -1;
+            ArrayDeque<Integer> adjustedDeque = null;
+            for (int i = 0; i < orderedIds.length; i++) {
+                if (orderedIds[i] == r.getIndex()) {
+                    indexAtRestaurant = i;
+
+                    // if we are above the floor, move down
+                    if (i > 0) {
+                        Integer temp = orderedIds[i];
+                        orderedIds[i] = orderedIds[i - 1];
+                        orderedIds[i - 1] = temp;
+                    }
+                    List<Integer> list = Arrays.asList(orderedIds);
+                    adjustedDeque = new ArrayDeque<>(list);
+                    break;
+                }
+            }
+            if (indexAtRestaurant == -1) return Response.buildLeanResponse(StatusLine.StatusCode.CODE_400_BAD_REQUEST);
+            RestaurantOrder adjustedRestaurantOrder = new RestaurantOrder(currentOrder.getIndex(), adjustedDeque);
+            restaurantOrder.write(adjustedRestaurantOrder);
             return Response.redirectTo("/");
         });
 
@@ -69,8 +118,24 @@ public class Main {
             String idString = request.getBody().asString("id");
             long id = Long.parseLong(idString);
             Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
-
             restaurants.delete(r);
+
+            RestaurantOrder currentOrder = restaurantOrder.values().stream().toList().getFirst();
+            Integer[] orderedIds = currentOrder.getOrderedIds().toArray(Integer[]::new);
+            int indexAtRestaurant = -1;
+            ArrayDeque<Integer> adjustedDeque = new ArrayDeque<>();
+            for (int i = 0; i < orderedIds.length; i++) {
+                // add every restaurant id except the one we are removing
+                if (orderedIds[i] == r.getIndex()) {
+                    indexAtRestaurant = i;
+                    continue;
+                }
+                adjustedDeque.add(orderedIds[i]);
+            }
+            if (indexAtRestaurant == -1) return Response.buildLeanResponse(StatusLine.StatusCode.CODE_400_BAD_REQUEST);
+            RestaurantOrder adjustedRestaurantOrder = new RestaurantOrder(currentOrder.getIndex(), adjustedDeque);
+            restaurantOrder.write(adjustedRestaurantOrder);
+
             return Response.redirectTo("/");
         });
 
