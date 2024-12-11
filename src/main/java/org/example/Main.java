@@ -29,11 +29,12 @@ public class Main {
 
         fs.getWebFramework().registerPath(GET, "", request -> {
             String restaurantsString = restaurants.values().stream()
-                    .sorted(Comparator.comparingInt(Restaurant::getPlaceInList))
+                    .sorted(Comparator.comparingInt(Restaurant::getPlaceInList).reversed())
                     .map(x -> {
                         Map<String,String> myMap = new HashMap<>();
                         myMap.put("restaurant_name", x.getName());
                         myMap.put("restaurant_id", String.valueOf(x.getIndex()));
+                        myMap.put("restaurant_place_in_list", String.valueOf(x.getPlaceInList()));
                         return restaurantEntryProcessor.renderTemplate(myMap);
                     }).collect(Collectors.joining("\n"));
 
@@ -61,6 +62,15 @@ public class Main {
             Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
             int newPlaceInList = r.getPlaceInList() - 1;
             restaurants.write(new Restaurant(r.getIndex(), r.getName(), newPlaceInList));
+            return Response.redirectTo("/");
+        });
+
+        fs.getWebFramework().registerPath(POST, "delete_restaurant", request -> {
+            String idString = request.getBody().asString("id");
+            long id = Long.parseLong(idString);
+            Restaurant r = SearchUtils.findExactlyOne(restaurants.values().stream(), x -> x.getIndex() == id);
+
+            restaurants.delete(r);
             return Response.redirectTo("/");
         });
 
