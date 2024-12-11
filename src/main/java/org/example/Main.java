@@ -22,10 +22,10 @@ public class Main {
     public static void main(String[] args) {
         FullSystem fs = FullSystem.initialize();
         Context context = fs.getContext();
-        var fileUtils = new FileUtils(context.getLogger(), context.getConstants());
+        org.example.FileUtils fileUtils = new org.example.FileUtils(new FileUtils(context.getLogger(), context.getConstants()), new Constants());
         Db<Restaurant> restaurants = context.getDb("restaurants", Restaurant.EMPTY);
-        TemplateProcessor indexProcessor = TemplateProcessor.buildProcessor(fileUtils.readTextFile("src/main/webapp/templates/index.html"));
-        TemplateProcessor restaurantEntryProcessor = TemplateProcessor.buildProcessor(fileUtils.readTextFile("src/main/webapp/templates/restaurant_entry.html"));
+        TemplateProcessor indexProcessor = TemplateProcessor.buildProcessor(fileUtils.readTemplate("index.html"));
+        TemplateProcessor restaurantEntryProcessor = TemplateProcessor.buildProcessor(fileUtils.readTemplate("restaurant_entry.html"));
 
         fs.getWebFramework().registerPath(GET, "", request -> {
             String restaurantsString = restaurants.values().stream()
