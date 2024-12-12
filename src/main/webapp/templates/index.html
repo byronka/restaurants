@@ -15,7 +15,8 @@
             New restaurant:
             <input required minlength="1" maxlength="50" type="text" name="restaurant" >
         </label>
-        <button type="submit">Add</button>
+        <button {{ is_disabled }} type="submit">Add</button>
+        {{ message_if_disabled }}
     </form>
 
     <ol>

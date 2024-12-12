@@ -41,7 +41,18 @@ public class Main {
                 sb.append(restaurantEntryProcessor.renderTemplate(myMap)).append(("\n"));
             }
 
-            return Response.htmlOk(indexProcessor.renderTemplate(Map.of("restaurantsList", sb.toString())));
+            String isDisabled = "";
+            String messageIfDisabled = "";
+            if (restaurants.values().size() >= 30) {
+                isDisabled = "disabled";
+                messageIfDisabled = "<p>at maximum count of restaurants</p>";
+            }
+
+            Map<String, String> myMap = new HashMap<>();
+            myMap.put("restaurantsList", sb.toString());
+            myMap.put("is_disabled", isDisabled);
+            myMap.put("message_if_disabled", messageIfDisabled);
+            return Response.htmlOk(indexProcessor.renderTemplate(myMap));
         });
 
         fs.getWebFramework().registerPath(POST, "add_restaurant", request -> {

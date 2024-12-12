@@ -34,9 +34,12 @@ public class RestaurantOrder extends DbData<RestaurantOrder> {
         String valuesAsString = tokens.get(1);
         String[] split = valuesAsString.split(";");
         ArrayDeque<Integer> integers = new ArrayDeque<>();
-        for (String item : split) {
-            integers.add(Integer.parseInt(item));
+        if (! (split.length == 1 && split[0].isEmpty())) {
+            for (String item : split) {
+                integers.add(Integer.parseInt(item));
+            }
         }
+
         return new RestaurantOrder(
                 Long.parseLong(tokens.getFirst()),
                 integers
