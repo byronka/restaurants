@@ -1,5 +1,7 @@
 package org.example;
 
+import java.io.IOException;
+
 public final class FileUtils {
 
     private final com.renomad.minum.utils.FileUtils fileUtils;
@@ -14,7 +16,11 @@ public final class FileUtils {
      * Read a template file, expected to use this with {@link com.renomad.minum.templating.TemplateProcessor}
      */
     public String readTemplate(String path) {
-        return fileUtils.readTextFile(constants.TEMPLATE_DIRECTORY + path);
+        try {
+            return fileUtils.readTextFile(constants.TEMPLATE_DIRECTORY + path);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
